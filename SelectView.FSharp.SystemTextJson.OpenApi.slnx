@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SelectView.FSharp.SystemTextJson.OpenApi/SelectView.FSharp.SystemTextJson.OpenApi.fsproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SelectView.FSharp.SystemTextJson.OpenApi.Tests/SelectView.FSharp.SystemTextJson.OpenApi.Tests.fsproj" />
+  </Folder>
+</Solution>

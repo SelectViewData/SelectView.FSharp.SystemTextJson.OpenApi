@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="OpenApiTestSetup.fs" />
+    <Compile Include="OpenApiOptionTests.fs" />
+    <Compile Include="OpenApiPerTypeOptionsTests.fs" />
+    <Compile Include="OpenApiCollectionsTests.fs" />
+    <Compile Include="OpenApiEnumTests.fs" />
+    <Compile Include="OpenApiRecordTests.fs" />
+    <Compile Include="OpenApiUnionTests.fs" />
+    <Compile Include="OpenApiUnionEncodingTests.fs" />
+    <Compile Include="OpenApiTupleTests.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/SelectView.FSharp.SystemTextJson.OpenApi/SelectView.FSharp.SystemTextJson.OpenApi.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Faqt" />
+    <PackageReference Include="Giraffe" />
+    <PackageReference Include="Giraffe.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+</Project>

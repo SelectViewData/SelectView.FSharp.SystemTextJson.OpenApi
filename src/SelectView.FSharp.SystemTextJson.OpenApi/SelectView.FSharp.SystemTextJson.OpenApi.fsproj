@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>SelectView.FSharp.SystemTextJson.OpenApi</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>SelectView</Authors>
+    <Copyright>Copyright (c) SelectView</Copyright>
+    <Description>OpenAPI schemas for F# types serialized with FSharp.SystemTextJson. Schema and document transformers for Microsoft.AspNetCore.OpenApi that cover options, records, unions, tuples, enums and collections.</Description>
+    <PackageTags>fsharp;openapi;system.text.json;fsharp.systemtextjson;aspnetcore</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/SelectViewData/SelectView.FSharp.SystemTextJson.OpenApi</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="SchemaCopy.fs" />
+    <Compile Include="CommonHelpers.fs" />
+    <Compile Include="FsOptions.fs" />
+    <Compile Include="Option.fs" />
+    <Compile Include="JsonNodes.fs" />
+    <Compile Include="Collections.fs" />
+    <Compile Include="Enum.fs" />
+    <Compile Include="Record.fs" />
+    <Compile Include="Tuple.fs" />
+    <Compile Include="Union.fs" />
+    <Compile Include="Bootstrap.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="FSharp.SystemTextJson" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.OpenApi" />
+  </ItemGroup>
+</Project>
