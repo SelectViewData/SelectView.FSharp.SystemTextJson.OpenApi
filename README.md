@@ -54,9 +54,10 @@ name or to add your own transformers.
 
 To use only some transformers, add them to your own `AddOpenApi` call, for
 example `options.AddSchemaTransformer(UnionSchemaTransformer(fsOptions))`.
-Then also add `fsOptions` to your serializer options yourself. For one
-component for each union case, also add
-`options.AddDocumentTransformer(UnionCaseComponentsDocumentTransformer())`.
+Then also add `fsOptions` to your serializer options yourself, and add the two
+document transformers: `UnionCaseComponentsDocumentTransformer()` gives one
+component for each union case, and `NullableEnumDocumentTransformer()` fixes
+nullable enums.
 
 ## Build
 
