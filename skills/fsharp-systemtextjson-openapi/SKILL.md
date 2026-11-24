@@ -36,10 +36,7 @@ OpenAPI document (default `v1`, served at `/openapi/{documentName}.json`,
 OpenAPI 3.1) with all transformers. It also adds `fsOptions` to
 `Microsoft.AspNetCore.Http.Json.JsonOptions`.
 
-The OpenAPI generator builds every schema from
-`Microsoft.AspNetCore.Http.Json.JsonOptions` (naming policy, ignore condition,
-`fsOptions`). Minimal APIs serialize with the same options. MVC controllers
-and Giraffe serialize with their own options.
+The OpenAPI generator reads `Microsoft.AspNetCore.Http.Json.JsonOptions`.
 
 ## Rules
 
@@ -81,8 +78,9 @@ and Giraffe serialize with their own options.
 - Unions: the encoding from the options (internal tag, adjacent tag, external
   tag, untagged, named fields, unwrapped record cases, unwrapped single-field
   cases, unwrapped single-case unions). With `UnwrapFieldlessTags`, a union of
-  only fieldless cases becomes a string enum. Other unions with more than one
-  case get one component for each case.
+  only fieldless cases becomes a string enum. Every other union gets one
+  component for each case, except a single-case union under
+  `UnwrapSingleCaseUnions`.
 - A tuple becomes a fixed-length array. Its items schema allows any of the
   element types; it does not fix the type of each position.
 - `list` and `Set` become arrays. `Map` with `string` keys (or single-case

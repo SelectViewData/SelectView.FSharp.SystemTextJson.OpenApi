@@ -11,9 +11,10 @@ package adds schema and document transformers that read your
 - `option` and `voption`: the inner value, and `null` for `option` record
   fields
 - records: required and optional properties, including `Skippable<'T>` fields
-- unions: tags, internal and external encodings, named fields, unwrapped cases,
-  fieldless cases as strings, and one component for each case
-- tuples, F# collections (`list`, `Set`, `Map`), and `JsonNode`
+- unions: tags, internal, adjacent and external encodings, named fields,
+  unwrapped cases, unions of fieldless cases as string enums, and one component
+  for each case
+- tuples, F# collections (`list`, `Set`, `Map`), and `JsonObject`
 - enums: string and number encodings, also when nullable
 - per-type options from `[<JsonFSharpConverter(...)>]`
 
@@ -55,8 +56,8 @@ name or to add your own transformers.
 
 To use only some transformers, add them to your own `AddOpenApi` call, for
 example `options.AddSchemaTransformer(UnionSchemaTransformer(fsOptions))`.
-Then also add `fsOptions` to your serializer options yourself, and add the two
-document transformers: `UnionCaseComponentsDocumentTransformer()` gives one
+Then also add `fsOptions` to `Microsoft.AspNetCore.Http.Json.JsonOptions`, and
+add the two document transformers last: `UnionCaseComponentsDocumentTransformer()` gives one
 component for each union case, and `NullableEnumDocumentTransformer()` fixes
 nullable enums.
 
