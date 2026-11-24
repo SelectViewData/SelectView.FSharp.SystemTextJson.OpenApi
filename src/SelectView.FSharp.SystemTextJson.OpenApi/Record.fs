@@ -21,12 +21,6 @@ module private RecordHelpers =
     else
       None
 
-  let (|FSharpOptionType|_|) (t: Type) =
-    if t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<option<_>> then
-      Some(t.GetGenericArguments()[0])
-    else
-      None
-
   let getRecordProperties (fsOptions: JsonFSharpOptions) (recordType: Type) =
     let fields = FSharpType.GetRecordFields(recordType, true)
 
@@ -104,7 +98,7 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
 
             let propertySchemaTask =
               match effectiveType with
-              | RecordHelpers.FSharpOptionType innerType when
+              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when
                   fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
                   ->
                   task {

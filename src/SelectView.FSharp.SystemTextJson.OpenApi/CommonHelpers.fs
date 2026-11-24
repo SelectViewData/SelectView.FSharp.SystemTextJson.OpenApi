@@ -10,6 +10,16 @@ open Microsoft.OpenApi
 
 module internal OpenApiSchemaHelpers =
 
+  let (|OptionOrValueOptionType|_|) (t: Type) =
+    if
+      t.IsGenericType
+      && (t.GetGenericTypeDefinition() = typedefof<option<_>>
+          || t.GetGenericTypeDefinition() = typedefof<voption<_>>)
+    then
+      Some(t.GetGenericArguments()[0])
+    else
+      None
+
   let private hasSchemaTypeFlag (schemaType: JsonSchemaType) (flag: JsonSchemaType) =
     ((int schemaType) &&& (int flag)) = int flag
 

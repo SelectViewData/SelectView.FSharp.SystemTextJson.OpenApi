@@ -67,8 +67,8 @@ reads.
 
 ## What the schema shows
 
-- `option` or `voption` record field: the inner schema plus `null`, because
-  `None` and `ValueNone` are written as `null`. Top-level `option` and
+- `option` or `voption` record or union field: the inner schema plus `null`,
+  because `None` and `ValueNone` are written as `null`. Top-level `option` and
   `voption`: the inner schema only.
 - With `UnwrapOption` turned off: `option` is `null` or a tagged `Some`
   object; `voption` is a tagged `ValueSome` or `ValueNone` object.

@@ -70,8 +70,7 @@ type OptionSchemaTransformer(fsOptions: JsonFSharpOptions) =
           let! innerSchema = getOrCreateSchema innerType
           SchemaCopy.copyTo schema innerSchema
 
-          // Top-level option and voption schemas are unwrapped, while option- and voption-valued record properties
-          // remain nullable: FSharp.SystemTextJson writes `None` and `ValueNone` as `null`.
+          // Top-level option and voption schemas are unwrapped, while option- and voption-valued record properties remain nullable.
           if not (isNull ctx.JsonPropertyInfo) then
             OpenApiSchemaHelpers.addNull schema innerSchema
         }
