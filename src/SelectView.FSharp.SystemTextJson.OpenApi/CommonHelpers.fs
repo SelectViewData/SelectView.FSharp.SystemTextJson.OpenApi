@@ -114,6 +114,9 @@ module internal OpenApiSchemaHelpers =
     | null -> true
     | enumValues -> enumValues.Count = 0
 
+  let anyOfSchema (schemas: IOpenApiSchema seq) =
+    OpenApiSchema(AnyOf = ResizeArray<IOpenApiSchema>(schemas))
+
   let getOrCreateDeterministicSchema
     (ctx: OpenApiSchemaTransformerContext)
     (ct: CancellationToken)
@@ -127,14 +130,16 @@ module internal OpenApiSchemaHelpers =
     }
 
   let getOrCreateFieldSchema
-    (unwrapOption: bool)
+    (fsOptions: JsonFSharpOptions)
     (ctx: OpenApiSchemaTransformerContext)
     (ct: CancellationToken)
     (t: Type)
     : Task<OpenApiSchema> =
     task {
       match t with
-      | OptionOrValueOptionType innerType when unwrapOption ->
+      | OptionOrValueOptionType innerType when
+        (FsOptions.getEffectiveFsOptions t fsOptions).UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
+        ->
         let! innerSchema = getOrCreateDeterministicSchema ctx ct innerType
         let optionSchema = OpenApiSchema()
         SchemaCopy.copyTo optionSchema innerSchema
@@ -143,12 +148,13 @@ module internal OpenApiSchemaHelpers =
       | _ -> return! getOrCreateDeterministicSchema ctx ct t
     }
 
+  let isSkippableType (t: Type) =
+    t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Skippable<_>>
+
   let canSkipField (options: System.Text.Json.JsonSerializerOptions) (fsOptions: JsonFSharpOptions) (t: Type) =
     match t with
     | OptionOrValueOptionType _ ->
       fsOptions.SkippableOptionFields = SkippableOptionFields.Always
       || (ignoreNullValues options
           && fsOptions.SkippableOptionFields = SkippableOptionFields.FromJsonSerializerOptions)
-    | _ ->
-      ignoreNullValues options
-      || (t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Skippable<_>>)
+    | _ -> ignoreNullValues options || isSkippableType t

@@ -122,7 +122,7 @@ let ``Collections use array and dictionary schemas matching their JSON encoding`
   %((entryTuple["maxItems"] :?> JsonValue).GetValue<int>()).Should().Be(2)
 
   let entryItemTypes =
-    entryTuple["items"]["oneOf"] :?> JsonArray
+    entryTuple["items"]["anyOf"] :?> JsonArray
     |> Seq.collect getSchemaTypes
     |> Set.ofSeq
 

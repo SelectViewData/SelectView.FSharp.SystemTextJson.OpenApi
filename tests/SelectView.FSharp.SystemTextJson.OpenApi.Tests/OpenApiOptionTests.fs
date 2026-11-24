@@ -47,6 +47,10 @@ type RecordSkippingNone =
   { [<JsonPropertyName "name">] Name: string
     [<JsonPropertyName "note">] Note: string option }
 
+type UnwrappedRecordCase =
+  | Wrapped of RecordSkippingNone
+  | Bare of n: int
+
 let private endpoints : Endpoint list =
   [
     POST [
@@ -116,6 +120,10 @@ let private endpoints : Endpoint list =
     POST [
       route "/record-skipping-none" (text "ok")
       |> addOpenApi(OpenApiConfig(requestBody = RequestBody(typeof<RecordSkippingNone>, contentTypes = [| "application/json" |])))
+    ]
+    POST [
+      route "/unwrapped-record-case" (text "ok")
+      |> addOpenApi(OpenApiConfig(requestBody = RequestBody(typeof<UnwrappedRecordCase>, contentTypes = [| "application/json" |])))
     ]
   ]
 
@@ -427,8 +435,10 @@ let ``option in a tuple element allows null`` () : Task =
     let schema =
       getRecordPropertySchema builtIn "/record-with-option-tuple" "pair" |> expandSchemaRefs builtIn
 
+    let alternatives = itemAlternatives schema
+
     %serialize({ RecordWithOptionTuple.Pair = (None, 1) }).Should().Be("""{"pair":[null,1]}""")
-    %(allowsNull schema).Should().BeTrue()
+    %(alternatives |> List.map schemaTypes |> Set.ofList).Should().Be(Set.ofList [ Set.ofList [ "string"; "null" ]; Set.singleton "integer" ])
   }
 
 [<Fact>]
@@ -440,8 +450,11 @@ let ``option in a positional union field allows null`` () : Task =
       let schema =
         getSchemaForPath builtIn "/positional-option-union" |> expandSchemaRefs builtIn
 
+      let alternatives = arraySchemasUnder schema |> List.collect itemAlternatives |> List.map schemaTypes
+
       %(serializeWith fsOptions (PosPair(None, 2))).Should().Be(expectedJson, name)
-      %(allowsNull schema).Should().BeTrue(name)
+      %(alternatives |> List.contains (Set.ofList [ "string"; "null" ])).Should().BeTrue(name)
+      %(alternatives |> List.contains (Set.singleton "integer")).Should().BeTrue(name)
   }
 
 [<Fact>]
@@ -454,8 +467,14 @@ let ``option in an unwrapped single-field case allows null`` () : Task =
     let schema =
       getSchemaForPath builtIn "/single-option-field-union" |> expandSchemaRefs builtIn
 
+    let fieldsTypes =
+      getJsonPath schema [ "oneOf" ] :?> JsonArray
+      |> Seq.map nonNull
+      |> Seq.find (fun case -> (getJsonPath case [ "properties"; "Case"; "enum" ]).[0].GetValue<string>() = "OnlyOption")
+      |> fun case -> getJsonPath case [ "properties"; "Fields" ] |> schemaTypes
+
     %(serializeWith fsOptions (OnlyOption None)).Should().Be("""{"Case":"OnlyOption","Fields":null}""")
-    %(allowsNull schema).Should().BeTrue()
+    %fieldsTypes.Should().Be(Set.ofList [ "string"; "null" ])
   }
 
 [<Fact>]
@@ -479,5 +498,51 @@ let ``SkippableOptionFields decides whether an option field is required`` () : T
 
       %json.Should().Be(expectedJson, name)
       %(requiredNames record).Should().Be(expectedRequired, name)
+  }
+
+[<Fact>]
+let ``a string field equal to the case tag still matches the positional case schema`` () : Task =
+  task {
+    let fsOptions = JsonFSharpOptions.Default().WithUnionInternalTag()
+
+    let! builtIn = fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints (shippedTransformersFor fsOptions))
+
+    let caseArrays = getSchemaForPath builtIn "/positional-option-union" |> expandSchemaRefs builtIn |> arraySchemasUnder
+
+    %(serializeWith fsOptions (PosPair(Some "PosPair", 2))).Should().Be("""["PosPair","PosPair",2]""")
+    %(caseArrays |> List.forall (fun a -> isNull ((nonNull a.["items"]).["oneOf"]))).Should().BeTrue()
+  }
+
+[<Fact>]
+let ``an option override applies to tuple elements`` () : Task =
+  task {
+    let fsOptions =
+      fsharpJsonOptions.WithOverrides(dict [ typedefof<option<_>>, JsonFSharpOptions.Default().WithUnwrapOption(false) ])
+
+    let! builtIn = fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints (shippedTransformersFor fsOptions))
+
+    let schema =
+      getRecordPropertySchema builtIn "/record-with-option-tuple" "pair" |> expandSchemaRefs builtIn
+
+    let alternatives = itemAlternatives schema |> List.map schemaTypes
+
+    %(serializeWith fsOptions { RecordWithOptionTuple.Pair = (Some "a", 1) }).Should().Be("""{"pair":[{"Case":"Some","Fields":["a"]},1]}""")
+    %(alternatives |> Set.ofList).Should().Be(Set.ofList [ Set.ofList [ "object"; "null" ]; Set.singleton "integer" ])
+  }
+
+[<Fact>]
+let ``an unwrapped record case uses the record's own SkippableOptionFields`` () : Task =
+  task {
+    let! builtIn = fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints shippedTransformers)
+
+    let caseSchema =
+      getSchemaForPath builtIn "/unwrapped-record-case"
+      |> expandSchemaRefs builtIn
+      |> fun union -> getJsonPath union [ "oneOf" ] :?> JsonArray
+      |> Seq.map nonNull
+      |> Seq.find (fun case -> not (isNull (getJsonPath case [ "properties" ]).["name"]))
+
+    %serialize(Wrapped { RecordSkippingNone.Name = "x"; Note = None }).Should().Be("""{"kind":"Wrapped","name":"x"}""")
+    %(requiredNames caseSchema).Should().Be(Set.ofList [ "kind"; "name" ])
   }
 

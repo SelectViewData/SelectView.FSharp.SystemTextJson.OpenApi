@@ -20,6 +20,7 @@ package adds schema and document transformers that read your
 - enums: string and number encodings, also when nullable
 - per-type options from `WithOverrides` and `[<JsonFSharpConverter(...)>]`,
   merged with the global options the same way as FSharp.SystemTextJson
+  (`WithOverrideMembers` and `MapFormat` are not supported)
 
 The package targets .NET 10 and OpenAPI 3.1.
 

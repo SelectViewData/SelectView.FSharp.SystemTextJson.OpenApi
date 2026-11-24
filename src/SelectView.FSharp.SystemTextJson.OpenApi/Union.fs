@@ -22,9 +22,6 @@ module private UnionHelpers =
   let isFSharpListType (t: Type) =
     t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<list<_>>
 
-  let isSkippableType (t: Type) =
-    t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Skippable<_>>
-
   let getJsonFieldNames (getAttributes: Type -> obj[]) =
     getAttributes typeof<JsonNameAttribute>
     |> Seq.choose (function
@@ -153,13 +150,12 @@ module private UnionCasePromotionPlan =
     | Null -> ()
     | NonNull metadata -> metadata.Remove(MetadataKey) |> ignore
 
-type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
-  let unwrapOptionFields = fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
+type UnionSchemaTransformer(globalFsOptions: JsonFSharpOptions) =
 
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync(schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken) : Task =
       let t = ctx.JsonTypeInfo.Type
-      let fsOptions = FsOptions.getEffectiveFsOptions t fsOptions
+      let fsOptions = FsOptions.getEffectiveFsOptions t globalFsOptions
 
       if
         not (FSharpType.IsUnion(t))
@@ -178,10 +174,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
             OpenApiSchemaHelpers.getOrCreateDeterministicSchema ctx ct ty
 
           let getFieldPropertySchema (ty: Type) =
-            OpenApiSchemaHelpers.getOrCreateFieldSchema unwrapOptionFields ctx ct ty
-
-          let canSkipField (ty: Type) =
-            OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options fsOptions ty
+            OpenApiSchemaHelpers.getOrCreateFieldSchema globalFsOptions ctx ct ty
 
           let createUnionFieldsObjectSchema (uci: UnionCaseInfo) =
             task {
@@ -195,7 +188,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                 let! fieldSchema = getFieldPropertySchema fieldInfo.PropertyType
                 props[name] <- fieldSchema
 
-                if not (canSkipField fieldInfo.PropertyType) then
+                if not (OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options fsOptions fieldInfo.PropertyType) then
                   required.Add(name) |> ignore
 
               return
@@ -240,18 +233,20 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                   && FSharpType.IsRecord fields[0].PropertyType
                 then
                   let recordType = fields[0].PropertyType
+                  let recordFsOptions = FsOptions.getEffectiveFsOptions recordType fsOptions
 
                   let recordProps =
-                    UnionHelpers.getRecordProperties fsOptions recordType
+                    UnionHelpers.getRecordProperties recordFsOptions recordType
                     |> Array.filter (fun p -> p.GetCustomAttributes(typeof<JsonIgnoreAttribute>, true) |> Array.isEmpty)
 
                   for p in recordProps do
                     let name = UnionHelpers.getPropertyName ctx.JsonTypeInfo.Options p
 
-                    let canBeSkipped = canSkipField p.PropertyType
+                    let canBeSkipped =
+                      OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options recordFsOptions p.PropertyType
 
                     let effectiveType =
-                      if UnionHelpers.isSkippableType p.PropertyType then
+                      if OpenApiSchemaHelpers.isSkippableType p.PropertyType then
                         p.PropertyType.GetGenericArguments()[0]
                       else
                         p.PropertyType
@@ -270,7 +265,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                     let! fieldSchema = getFieldPropertySchema fieldInfo.PropertyType
                     props[name] <- fieldSchema
 
-                    if not (canSkipField fieldInfo.PropertyType) then
+                    if not (OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options fsOptions fieldInfo.PropertyType) then
                       required.Add(name) |> ignore
 
                 return
@@ -397,21 +392,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                 let elementSchemas =
                   Array.append [| tagSchema |] (fieldSchemas |> Array.map (fun x -> x :> IOpenApiSchema))
 
-                let hasPlainString =
-                  elementSchemas
-                  |> Seq.map OpenApiSchemaHelpers.unwrapReferenceSchema
-                  |> Seq.exists (fun s -> s.Type = Nullable(JsonSchemaType.String) && OpenApiSchemaHelpers.enumIsEmpty s)
-
-                let hasEnumString =
-                  elementSchemas
-                  |> Seq.map OpenApiSchemaHelpers.unwrapReferenceSchema
-                  |> Seq.exists (fun s -> s.Type = Nullable(JsonSchemaType.String) && not (OpenApiSchemaHelpers.enumIsEmpty s))
-
-                let itemUnionSchema =
-                  if hasPlainString && hasEnumString then
-                    OpenApiSchema(AnyOf = ResizeArray<IOpenApiSchema>(elementSchemas))
-                  else
-                    OpenApiSchema(OneOf = ResizeArray<IOpenApiSchema>(elementSchemas))
+                let itemUnionSchema = OpenApiSchemaHelpers.anyOfSchema elementSchemas
 
                 let tupleSchema =
                   OpenApiSchema(

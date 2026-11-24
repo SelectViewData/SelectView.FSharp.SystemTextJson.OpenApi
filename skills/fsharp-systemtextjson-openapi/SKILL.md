@@ -55,16 +55,18 @@ reads.
    on the global options (without it, the attribute is ignored). The
    transformers apply both the same way as FSharp.SystemTextJson.
 3. Per-type options inherit only the union encoding, and only when they do not
-   set it. Every other option (for example the union tag name or
-   `UnwrapOption`) takes the FSharp.SystemTextJson default, not the global
-   value. Set every option that the type needs.
+   set it. Every other option (for example the union tag name) takes the
+   FSharp.SystemTextJson default, not the global value. Set every option that
+   the type needs. An `option` or `voption` field follows the options for
+   `option<_>` or `voption<_>` (global or overridden), never the options of
+   the record or union that contains it.
 4. If you add the transformers yourself with `AddOpenApi`, add `fsOptions` to
    `JsonOptions`, and add the two document transformers
    `UnionCaseComponentsDocumentTransformer()` and
    `NullableEnumDocumentTransformer()` last, after your own document
    transformers.
-5. The transformers do not model `MapFormat`. With this option the schema
-   does not match the JSON.
+5. The transformers do not model `MapFormat` or `WithOverrideMembers`. With
+   these options the schema does not match the JSON.
 
 ## What the schema shows
 

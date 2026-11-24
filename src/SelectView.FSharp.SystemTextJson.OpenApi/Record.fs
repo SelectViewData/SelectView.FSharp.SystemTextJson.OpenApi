@@ -12,11 +12,8 @@ open Microsoft.OpenApi
 
 module private RecordHelpers =
 
-  let isSkippableType (t: Type) =
-    t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Skippable<_>>
-
   let (|SkippableType|_|) (t: Type) =
-    if isSkippableType t then
+    if OpenApiSchemaHelpers.isSkippableType t then
       Some(t.GetGenericArguments()[0])
     else
       None
@@ -47,8 +44,7 @@ module private RecordHelpers =
         || (p.GetCustomAttributes(typeof<JsonIncludeAttribute>, true) |> Seq.isEmpty |> not))
 
 
-type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
-  let unwrapOptionFields = fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
+type RecordSchemaTransformer(globalFsOptions: JsonFSharpOptions) =
 
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync
@@ -61,8 +57,7 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
           // Preserve schema identity so records stay component schemas (not inlined everywhere).
           let originalId = schema.Id
           let originalMetadata = schema.Metadata
-          let fsOptions = FsOptions.getEffectiveFsOptions t fsOptions
-
+          let fsOptions = FsOptions.getEffectiveFsOptions t globalFsOptions
 
           let props = Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal)
           let required = HashSet<string>(StringComparer.Ordinal)
@@ -96,7 +91,7 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
               | _ -> p.PropertyType
 
             let! propertySchema =
-              OpenApiSchemaHelpers.getOrCreateFieldSchema unwrapOptionFields ctx ct effectiveType
+              OpenApiSchemaHelpers.getOrCreateFieldSchema globalFsOptions ctx ct effectiveType
 
             props[name] <- propertySchema
 
