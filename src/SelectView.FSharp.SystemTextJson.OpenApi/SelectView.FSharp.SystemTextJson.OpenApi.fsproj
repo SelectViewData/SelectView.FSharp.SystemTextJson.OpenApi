@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageId>SelectView.FSharp.SystemTextJson.OpenApi</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>SelectView</Authors>
     <Copyright>Copyright (c) SelectView</Copyright>
     <Description>OpenAPI schemas for F# types serialized with FSharp.SystemTextJson. Schema and document transformers for Microsoft.AspNetCore.OpenApi that cover options, records, unions, tuples, enums and collections.</Description>

@@ -70,7 +70,8 @@ type OptionSchemaTransformer(fsOptions: JsonFSharpOptions) =
           let! innerSchema = getOrCreateSchema innerType
           SchemaCopy.copyTo schema innerSchema
 
-          // Top-level option schemas are unwrapped, while option-valued record properties remain nullable.
+          // Top-level option and voption schemas are unwrapped, while option- and voption-valued record properties
+          // remain nullable: FSharp.SystemTextJson writes `None` and `ValueNone` as `null`.
           if not (isNull ctx.JsonPropertyInfo) then
             OpenApiSchemaHelpers.addNull schema innerSchema
         }
@@ -142,21 +143,12 @@ type OptionSchemaTransformer(fsOptions: JsonFSharpOptions) =
         }
         :> Task
 
-      let transformUnwrappedValueOption innerType =
-        task {
-          // ValueOption<'T> is erased to 'T' in schemas without adding property nullability.
-          let! innerSchema = getOrCreateSchema innerType
-          SchemaCopy.copyTo schema innerSchema
-        }
-        :> Task
-
       match ctx.JsonTypeInfo.Type with
-      | Helpers.FSharpOptionType innerType when fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption ->
+      | Helpers.FSharpOptionType innerType
+      | Helpers.FSharpValueOptionType innerType when fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption ->
         transformUnwrappedOption innerType
       | Helpers.FSharpOptionType innerType ->
         transformWrappedOption innerType
-      | Helpers.FSharpValueOptionType innerType when fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption ->
-        transformUnwrappedValueOption innerType
       | Helpers.FSharpValueOptionType innerType ->
         transformWrappedValueOption innerType
       | _ ->

@@ -135,7 +135,7 @@ let ``voption<string> property schema matches snapshot`` () : Task =
       |> canonicalizeJson
       |> fun x -> x.ToJsonString(jsonOptions)
 
-    %schema.Should().Be(expectedOptionStringSchema)
+    %schema.Should().Be(expectedOptionPropertySchema)
   }
 
 [<Fact>]
