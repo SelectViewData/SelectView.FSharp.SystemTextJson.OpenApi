@@ -8,7 +8,7 @@ schemas then do not match the JSON that FSharp.SystemTextJson writes. This
 package adds schema and document transformers that read your
 `JsonFSharpOptions` and describe the real JSON:
 
-- `option` and `voption`: the inner value, and `null` for `option` record
+- `option` and `voption`: the inner value, and `null` for record and union
   fields
 - records: required and optional properties, including `Skippable<'T>` fields
 - unions: tags, internal, adjacent and external encodings, named fields,

@@ -13,12 +13,6 @@ open Microsoft.OpenApi
 
 module private UnionHelpers =
 
-  let (|FSharpOptionType|_|) (t: Type) =
-    if t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<option<_>> then
-      Some(t.GetGenericArguments()[0])
-    else
-      None
-
   let isFSharpOptionType (t: Type) =
     t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<option<_>>
 
@@ -160,6 +154,8 @@ module private UnionCasePromotionPlan =
     | NonNull metadata -> metadata.Remove(MetadataKey) |> ignore
 
 type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
+  let unwrapOptionFields = fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
+
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync(schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken) : Task =
       let t = ctx.JsonTypeInfo.Type
@@ -186,7 +182,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
           let getFieldPropertySchema (ty: Type) =
             task {
               match ty with
-              | UnionHelpers.FSharpOptionType innerType when fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption ->
+              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when unwrapOptionFields ->
                 let! innerSchema = getOrCreateSchema innerType
                 let optionSchema = OpenApiSchema()
                 SchemaCopy.copyTo optionSchema innerSchema

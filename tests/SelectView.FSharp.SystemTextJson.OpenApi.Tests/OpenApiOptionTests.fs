@@ -1,6 +1,7 @@
 module SelectView.FSharp.SystemTextJson.OpenApi.Tests.OpenApiOptionTests
 
 open System
+open System.Text.Json
 open System.Text.Json.Nodes
 open System.Text.Json.Serialization
 open System.Threading.Tasks
@@ -10,6 +11,7 @@ open SelectView.FSharp.SystemTextJson.OpenApi
 open Giraffe
 open Giraffe.EndpointRouting
 open Giraffe.OpenApi
+open Microsoft.AspNetCore.OpenApi
 open SelectView.FSharp.SystemTextJson.OpenApi.Tests.OpenApiTestSetup
 open Xunit
 
@@ -18,6 +20,13 @@ type InnerRecord = { Value: string }
 type RecordWithOption = { [<JsonPropertyName "maybe">] Maybe: string option }
 
 type RecordWithVoption = { [<JsonPropertyName "maybeV">] MaybeV: string voption }
+
+[<JsonFSharpConverter(UnwrapOption = true)>]
+type RecordWithUnwrapOverride = { [<JsonPropertyName "maybeV">] MaybeV: string voption }
+
+type UnionWithVoption =
+  | WithVoption of maybeV: string voption
+  | WithNumber of n: int
 
 let private endpoints : Endpoint list =
   [
@@ -57,7 +66,35 @@ let private endpoints : Endpoint list =
         )
       )
     ]
+    POST [
+      route "/record-with-unwrap-override" (text "ok")
+      |> addOpenApi(
+        OpenApiConfig(requestBody = RequestBody(typeof<RecordWithUnwrapOverride>, contentTypes = [| "application/json" |]))
+      )
+    ]
+    POST [
+      route "/union-with-voption" (text "ok")
+      |> addOpenApi(
+        OpenApiConfig(requestBody = RequestBody(typeof<UnionWithVoption>, contentTypes = [| "application/json" |]))
+      )
+    ]
   ]
+
+let private shippedTransformersFor (fsOptions: JsonFSharpOptions) : IOpenApiSchemaTransformer list =
+  [ OptionSchemaTransformer(fsOptions)
+    JsonNodeSchemaTransformer()
+    CollectionsSchemaTransformer()
+    RecordSchemaTransformer(fsOptions)
+    TupleSchemaTransformer()
+    UnionSchemaTransformer(fsOptions)
+    EnumSchemaTransformer() ]
+
+let private shippedTransformers = shippedTransformersFor fsharpJsonOptions
+
+let private serializeWith (fsOptions: JsonFSharpOptions) value =
+  JsonSerializer.Serialize(value, fsOptions.ToJsonSerializerOptions())
+
+let private serialize value = serializeWith fsharpJsonOptions value
 
 let private getOptionPropertySchema (document: JsonNode) =
   getRecordPropertySchema document "/record-with-option" "maybe"
@@ -114,7 +151,7 @@ let ``Option<string> schema matches snapshot`` () : Task =
 let ``option<string> property schema matches snapshot`` () : Task =
   task {
     let! builtIn =
-      fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints [ OptionSchemaTransformer(fsharpJsonOptions) ])
+      fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints shippedTransformers)
 
     let schema =
       getOptionPropertySchema builtIn
@@ -128,14 +165,51 @@ let ``option<string> property schema matches snapshot`` () : Task =
 let ``voption<string> property schema matches snapshot`` () : Task =
   task {
     let! builtIn =
-      fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints [ OptionSchemaTransformer(fsharpJsonOptions) ])
+      fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints shippedTransformers)
 
     let schema =
       getVoptionPropertySchema builtIn
       |> canonicalizeJson
       |> fun x -> x.ToJsonString(jsonOptions)
 
-    %schema.Should().Be(expectedOptionStringSchema)
+    %serialize({ RecordWithVoption.MaybeV = ValueNone }).Should().Be("""{"maybeV":null}""")
+    %schema.Should().Be(expectedOptionPropertySchema)
+  }
+
+[<Fact>]
+let ``voption<string> union field schema allows null`` () : Task =
+  task {
+    let! builtIn = fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints shippedTransformers)
+
+    let caseSchema =
+      getSchemaForPath builtIn "/union-with-voption"
+      |> expandSchemaRefs builtIn
+      |> fun union -> getJsonPath union [ "oneOf" ] :?> JsonArray
+      |> Seq.find (fun case -> not (isNull (getJsonPath case [ "properties" ]).["maybeV"]))
+
+    let schema =
+      getJsonPath caseSchema [ "properties"; "maybeV" ]
+      |> canonicalizeJson
+      |> fun x -> x.ToJsonString(jsonOptions)
+
+    %serialize(WithVoption ValueNone).Should().Be("""{"kind":"WithVoption","maybeV":null}""")
+    %schema.Should().Be(expectedOptionPropertySchema)
+  }
+
+[<Fact>]
+let ``voption field follows the global UnwrapOption, not the parent record's override`` () : Task =
+  task {
+    let fsOptions = fsharpJsonOptions.WithUnwrapOption(false)
+
+    let! builtIn = fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints (shippedTransformersFor fsOptions))
+
+    let schema =
+      getRecordPropertySchema builtIn "/record-with-unwrap-override" "maybeV"
+      |> expandSchemaRefs builtIn
+      |> fun x -> x.ToJsonString()
+
+    %(serializeWith fsOptions { RecordWithUnwrapOverride.MaybeV = ValueNone }).Should().Be("""{"maybeV":{"kind":"ValueNone"}}""")
+    %schema.Should().Contain("\"ValueNone\"").And.NotContain("\"null\"")
   }
 
 [<Fact>]
