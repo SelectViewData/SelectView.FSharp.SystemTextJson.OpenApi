@@ -34,9 +34,8 @@ app.MapOpenApi() |> ignore
 `AddOpenApiForSystemTextJson(fsOptions, ?documentName, ?setup)` registers the
 OpenAPI document (default `v1`, served at `/openapi/{documentName}.json`,
 OpenAPI 3.1) with all transformers. It also adds `fsOptions` to
-`Microsoft.AspNetCore.Http.Json.JsonOptions`.
-
-The OpenAPI generator reads `Microsoft.AspNetCore.Http.Json.JsonOptions`.
+`Microsoft.AspNetCore.Http.Json.JsonOptions`, which the OpenAPI generator
+reads.
 
 ## Rules
 
@@ -77,8 +76,9 @@ The OpenAPI generator reads `Microsoft.AspNetCore.Http.Json.JsonOptions`.
   `[<JsonRequired>]` makes a field required.
 - Unions: the encoding from the options (internal tag, adjacent tag, external
   tag, untagged, named fields, unwrapped record cases, unwrapped single-field
-  cases, unwrapped single-case unions). With `UnwrapFieldlessTags`, a union of
-  only fieldless cases becomes a string enum. Every other union gets one
+  cases, unwrapped single-case unions). With `UnwrapFieldlessTags`, a
+  fieldless case becomes a string, and a union of only fieldless cases
+  becomes a string enum. Every other union gets one
   component for each case, except a single-case union under
   `UnwrapSingleCaseUnions`.
 - A tuple becomes a fixed-length array. Its items schema allows any of the
