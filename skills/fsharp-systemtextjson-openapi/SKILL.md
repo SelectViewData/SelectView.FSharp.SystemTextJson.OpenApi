@@ -57,8 +57,9 @@ reads.
 3. Per-type options inherit only the union encoding, and only when they do not
    set it. Every other option (for example the union tag name) takes the
    FSharp.SystemTextJson default, not the global value. Set every option that
-   the type needs. An `option` or `voption` field follows the options for
-   `option<_>` or `voption<_>` (global or overridden), never the options of
+   the type needs. An `option` or `voption` field takes `UnwrapOption` from
+   the options for `option<_>` or `voption<_>` (global or overridden).
+   Whether a `None` field is left out follows the `SkippableOptionFields` of
    the record or union that contains it.
 4. If you add the transformers yourself with `AddOpenApi`, add `fsOptions` to
    `JsonOptions`, and add the two document transformers

@@ -30,6 +30,8 @@ type UnionWithVoption =
 
 type RecordWithOptionTuple = { [<JsonPropertyName "pair">] Pair: string option * int }
 
+type RecordWithTwoOptions = { [<JsonPropertyName "pair">] Pair: string option * int option }
+
 type PositionalOptionUnion =
   | PosPair of string option * int
   | PosEmpty
@@ -104,6 +106,10 @@ let private endpoints : Endpoint list =
     POST [
       route "/record-with-option-tuple" (text "ok")
       |> addOpenApi(OpenApiConfig(requestBody = RequestBody(typeof<RecordWithOptionTuple>, contentTypes = [| "application/json" |])))
+    ]
+    POST [
+      route "/record-with-two-options" (text "ok")
+      |> addOpenApi(OpenApiConfig(requestBody = RequestBody(typeof<RecordWithTwoOptions>, contentTypes = [| "application/json" |])))
     ]
     POST [
       route "/positional-option-union" (text "ok")
@@ -511,6 +517,7 @@ let ``a string field equal to the case tag still matches the positional case sch
 
     %(serializeWith fsOptions (PosPair(Some "PosPair", 2))).Should().Be("""["PosPair","PosPair",2]""")
     %(caseArrays |> List.forall (fun a -> isNull ((nonNull a.["items"]).["oneOf"]))).Should().BeTrue()
+    %(caseArrays |> List.exists (fun a -> itemAlternatives a |> List.map schemaTypes |> List.contains (Set.ofList [ "string"; "null" ]))).Should().BeTrue()
   }
 
 [<Fact>]
@@ -544,5 +551,17 @@ let ``an unwrapped record case uses the record's own SkippableOptionFields`` () 
 
     %serialize(Wrapped { RecordSkippingNone.Name = "x"; Note = None }).Should().Be("""{"kind":"Wrapped","name":"x"}""")
     %(requiredNames caseSchema).Should().Be(Set.ofList [ "kind"; "name" ])
+  }
+
+[<Fact>]
+let ``a null that matches two option elements uses anyOf`` () : Task =
+  task {
+    let! builtIn = fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints shippedTransformers)
+
+    let schema =
+      getRecordPropertySchema builtIn "/record-with-two-options" "pair" |> expandSchemaRefs builtIn
+
+    %serialize({ RecordWithTwoOptions.Pair = (None, None) }).Should().Be("""{"pair":[null,null]}""")
+    %(itemAlternatives schema |> List.map schemaTypes |> Set.ofList).Should().Be(Set.ofList [ Set.ofList [ "string"; "null" ]; Set.ofList [ "integer"; "null" ] ])
   }
 

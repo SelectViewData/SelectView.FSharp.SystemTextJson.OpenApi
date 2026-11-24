@@ -101,19 +101,6 @@ module internal OpenApiSchemaHelpers =
       Enum = ResizeArray<JsonNode>([ enumValue ])
     )
 
-  let rec unwrapReferenceSchema (schema: IOpenApiSchema) : IOpenApiSchema =
-    match schema with
-    | :? OpenApiSchemaReference as schemaReference ->
-      match schemaReference.Target with
-      | NonNull target -> unwrapReferenceSchema target
-      | Null -> schema
-    | _ -> schema
-
-  let enumIsEmpty (schema: IOpenApiSchema) =
-    match schema.Enum with
-    | null -> true
-    | enumValues -> enumValues.Count = 0
-
   let anyOfSchema (schemas: IOpenApiSchema seq) =
     OpenApiSchema(AnyOf = ResizeArray<IOpenApiSchema>(schemas))
 
@@ -150,6 +137,9 @@ module internal OpenApiSchemaHelpers =
 
   let isSkippableType (t: Type) =
     t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Skippable<_>>
+
+  let skippableInner (t: Type) =
+    if isSkippableType t then t.GetGenericArguments()[0] else t
 
   let canSkipField (options: System.Text.Json.JsonSerializerOptions) (fsOptions: JsonFSharpOptions) (t: Type) =
     match t with

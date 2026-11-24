@@ -245,13 +245,7 @@ type UnionSchemaTransformer(globalFsOptions: JsonFSharpOptions) =
                     let canBeSkipped =
                       OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options recordFsOptions p.PropertyType
 
-                    let effectiveType =
-                      if OpenApiSchemaHelpers.isSkippableType p.PropertyType then
-                        p.PropertyType.GetGenericArguments()[0]
-                      else
-                        p.PropertyType
-
-                    let! fieldSchema = getFieldPropertySchema effectiveType
+                    let! fieldSchema = getFieldPropertySchema (OpenApiSchemaHelpers.skippableInner p.PropertyType)
 
                     props[name] <- fieldSchema
 

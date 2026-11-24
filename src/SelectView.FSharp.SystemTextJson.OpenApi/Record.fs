@@ -12,12 +12,6 @@ open Microsoft.OpenApi
 
 module private RecordHelpers =
 
-  let (|SkippableType|_|) (t: Type) =
-    if OpenApiSchemaHelpers.isSkippableType t then
-      Some(t.GetGenericArguments()[0])
-    else
-      None
-
   let getRecordProperties (fsOptions: JsonFSharpOptions) (recordType: Type) =
     let fields = FSharpType.GetRecordFields(recordType, true)
 
@@ -85,10 +79,7 @@ type RecordSchemaTransformer(globalFsOptions: JsonFSharpOptions) =
               not explicitlyRequired
               && OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options fsOptions p.PropertyType
 
-            let effectiveType =
-              match p.PropertyType with
-              | RecordHelpers.SkippableType inner -> inner
-              | _ -> p.PropertyType
+            let effectiveType = OpenApiSchemaHelpers.skippableInner p.PropertyType
 
             let! propertySchema =
               OpenApiSchemaHelpers.getOrCreateFieldSchema globalFsOptions ctx ct effectiveType
