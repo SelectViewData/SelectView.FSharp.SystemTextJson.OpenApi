@@ -37,9 +37,9 @@ type UntaggedUnion =
 
 let private createTransformers fsOptions =
   [ OptionSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
-    CollectionsSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
+    CollectionsSchemaTransformer() :> IOpenApiSchemaTransformer
     RecordSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
-    TupleSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
+    TupleSchemaTransformer() :> IOpenApiSchemaTransformer
     UnionSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer ]
 
 let rec private collectPropertyNames (node: JsonNode) = seq {

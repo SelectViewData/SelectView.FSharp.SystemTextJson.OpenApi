@@ -13,6 +13,7 @@
     <Compile Include="OpenApiUnionTests.fs" />
     <Compile Include="OpenApiUnionEncodingTests.fs" />
     <Compile Include="OpenApiTupleTests.fs" />
+    <Compile Include="BootstrapTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/SelectView.FSharp.SystemTextJson.OpenApi/SelectView.FSharp.SystemTextJson.OpenApi.fsproj" />

@@ -8,7 +8,7 @@ open System.Threading.Tasks
 open Microsoft.AspNetCore.OpenApi
 open Microsoft.OpenApi
 
-type TupleSchemaTransformer(_fsOptions: System.Text.Json.Serialization.JsonFSharpOptions) =
+type TupleSchemaTransformer() =
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync(schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken) : Task =
       task {

@@ -1,8 +1,5 @@
 namespace SelectView.FSharp.SystemTextJson.OpenApi
 
-// Preserve both example fields; see DEBT-2026-09-08-openapi-legacy-example in docs/TECH_DEBT_TRACKER.md.
-#nowarn "44"
-
 open System.Collections.Generic
 open Microsoft.OpenApi
 
@@ -93,7 +90,6 @@ module internal SchemaCopy =
 
     dst.Discriminator <- src.Discriminator
     dst.Description <- src.Description
-    dst.Example <- src.Example
 
     dst.Examples <-
       match src.Examples with

@@ -52,7 +52,7 @@ let ``Tuple schema is a fixed-length array of its element types`` () : Task = ta
         OptionSchemaTransformer(fsOptions)
         UnionSchemaTransformer(fsOptions)
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer(fsOptions)
+        TupleSchemaTransformer()
       ])
 
   let schema = getSchemaForPath builtIn "/tuple-sample" |> expandSchemaRefs builtIn
@@ -81,7 +81,7 @@ let ``Tuple schema is inlined`` () : Task =
             [ OptionSchemaTransformer(fsOptions)
               UnionSchemaTransformer(fsOptions)
               RecordSchemaTransformer(fsOptions)
-              TupleSchemaTransformer(fsOptions) ]
+              TupleSchemaTransformer() ]
       )
 
     getSchemaForPath builtIn "/tuple-sample" |> assertSchemaIsInline

@@ -58,10 +58,7 @@ module internal OpenApiSchemaHelpers =
       | _ -> schema.AnyOf <- ResizeArray [ innerSchema; nullSchema ]
 
   let ignoreNullValues (options: System.Text.Json.JsonSerializerOptions) =
-    #nowarn "FS0044"
-    options.IgnoreNullValues
-    #warnon "FS0044"
-    || options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
 
   let tryGetJsonNames kind (getAttributes: Type -> obj[]) =
     match

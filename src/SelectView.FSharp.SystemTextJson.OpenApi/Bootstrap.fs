@@ -33,9 +33,9 @@ type DependencyExtension() =
         [
           OptionSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
           JsonNodeSchemaTransformer()
-          CollectionsSchemaTransformer(fsOptions)
+          CollectionsSchemaTransformer()
           RecordSchemaTransformer(fsOptions)
-          TupleSchemaTransformer(fsOptions)
+          TupleSchemaTransformer()
           UnionSchemaTransformer(fsOptions)
           EnumSchemaTransformer()
         ]

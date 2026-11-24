@@ -7,6 +7,7 @@
     <Description>OpenAPI schemas for F# types serialized with FSharp.SystemTextJson. Schema and document transformers for Microsoft.AspNetCore.OpenApi that cover options, records, unions, tuples, enums and collections.</Description>
     <PackageTags>fsharp;openapi;system.text.json;fsharp.systemtextjson;aspnetcore</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageProjectUrl>https://github.com/SelectViewData/SelectView.FSharp.SystemTextJson.OpenApi</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Nullable>enable</Nullable>

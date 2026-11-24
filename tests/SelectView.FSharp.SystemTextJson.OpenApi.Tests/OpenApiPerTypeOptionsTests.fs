@@ -86,9 +86,9 @@ let ``Per-type JsonFSharpConverterAttribute options shape record and union schem
     fetchOpenApiJson (fun () ->
       createBuiltInOpenApiApp endpoints [
         OptionSchemaTransformer(fsOptions)
-        CollectionsSchemaTransformer(fsOptions)
+        CollectionsSchemaTransformer()
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer(fsOptions)
+        TupleSchemaTransformer()
         UnionSchemaTransformer(fsOptions)
       ])
 

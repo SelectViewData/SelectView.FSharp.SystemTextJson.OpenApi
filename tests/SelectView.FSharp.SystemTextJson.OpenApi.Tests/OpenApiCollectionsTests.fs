@@ -90,9 +90,9 @@ let ``Collections use array and dictionary schemas matching their JSON encoding`
     fetchOpenApiJson (fun () ->
       createBuiltInOpenApiApp endpoints [
         OptionSchemaTransformer(fsOptions)
-        CollectionsSchemaTransformer(fsOptions)
+        CollectionsSchemaTransformer()
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer(fsOptions)
+        TupleSchemaTransformer()
         UnionSchemaTransformer(fsOptions)
       ])
 

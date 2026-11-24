@@ -21,7 +21,7 @@ module private CollectionsHelpers =
         let fields = cases[0].GetFields()
         fields.Length = 1 && fields[0].PropertyType = typeof<string>
 
-type CollectionsSchemaTransformer(_fsOptions: System.Text.Json.Serialization.JsonFSharpOptions) =
+type CollectionsSchemaTransformer() =
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync(schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken) : Task =
       let t = ctx.JsonTypeInfo.Type
