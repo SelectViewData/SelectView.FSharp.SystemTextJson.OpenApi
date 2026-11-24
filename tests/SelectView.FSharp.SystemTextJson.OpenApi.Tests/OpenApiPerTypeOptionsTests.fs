@@ -29,6 +29,15 @@ type ExternalTagUnionPerType =
   | Fieldless
   | Pair of string * int
 
+[<JsonFSharpConverter(UnionTagName = "type")>]
+type InheritingShape =
+  | Circle of radius: float
+  | Dot
+
+type OverriddenShape =
+  | Square of side: float
+  | NoShape
+
 let private endpoints : Endpoint list =
   [
     POST [
@@ -48,6 +57,14 @@ let private endpoints : Endpoint list =
           responseBodies = [ ResponseBody(typeof<ExternalTagUnionPerType>, contentTypes = [| "application/json" |]) ]
         )
       )
+    ]
+    POST [
+      route "/inheriting-shape" (text "ok")
+      |> addOpenApi(OpenApiConfig(requestBody = RequestBody(typeof<InheritingShape>, contentTypes = [| "application/json" |])))
+    ]
+    POST [
+      route "/overridden-shape" (text "ok")
+      |> addOpenApi(OpenApiConfig(requestBody = RequestBody(typeof<OverriddenShape>, contentTypes = [| "application/json" |])))
     ]
   ]
 
@@ -88,7 +105,7 @@ let ``Per-type JsonFSharpConverterAttribute options shape record and union schem
         OptionSchemaTransformer(fsOptions)
         CollectionsSchemaTransformer()
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer()
+        TupleSchemaTransformer(fsOptions)
         UnionSchemaTransformer(fsOptions)
       ])
 
@@ -109,3 +126,30 @@ let ``Per-type JsonFSharpConverterAttribute options shape record and union schem
   %(unionProperties.Contains("Fieldless")).Should().BeTrue()
   %(unionProperties.Contains("Pair")).Should().BeTrue()
 }
+
+let private shapeCases =
+  let withOverride =
+    fsharpJsonOptions.WithOverrides(
+      dict [ typeof<OverriddenShape>, JsonFSharpOptions.InheritUnionEncoding().WithUnionTagName("shape") ]
+    )
+
+  [ "attribute inherits the union encoding", fsharpJsonOptions, "/inheriting-shape",
+    serializeWith fsharpJsonOptions (Circle 1.0), """{"type":"Circle","radius":1}""", "type", "kind"
+    "WithOverrides applies", withOverride, "/overridden-shape",
+    serializeWith withOverride (Square 1.0), """{"shape":"Square","side":1}""", "shape", "kind"
+    "attribute ignored without AllowOverride", fsharpJsonOptions.WithAllowOverride(false), "/inheriting-shape",
+    serializeWith (fsharpJsonOptions.WithAllowOverride(false)) (Circle 1.0), """{"kind":"Circle","radius":1}""", "kind", "type" ]
+
+[<Fact>]
+let ``Per-type options merge with the global options like FSharp.SystemTextJson`` () : Task = task {
+  for (name, fsOptions, path, json, expectedJson, tag, absentTag) in shapeCases do
+    let! builtIn = fetchOpenApiJson (fun () -> createBuiltInOpenApiApp endpoints (shippedTransformersFor fsOptions))
+
+    let names = getSchemaForPath builtIn path |> expandSchemaRefs builtIn |> collectPropertyNames |> Set.ofSeq
+
+    %json.Should().Be(expectedJson, name)
+    %(names.Contains tag).Should().BeTrue(name)
+    %(names.Contains absentTag).Should().BeFalse(name)
+    %(names.Contains "Fields").Should().BeFalse(name)
+}
+

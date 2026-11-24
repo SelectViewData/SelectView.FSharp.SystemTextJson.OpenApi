@@ -125,3 +125,30 @@ module internal OpenApiSchemaHelpers =
       SchemaCopy.copyTo normalizedSchema schema
       return normalizePrimitiveStringCoercion normalizedSchema
     }
+
+  let getOrCreateFieldSchema
+    (unwrapOption: bool)
+    (ctx: OpenApiSchemaTransformerContext)
+    (ct: CancellationToken)
+    (t: Type)
+    : Task<OpenApiSchema> =
+    task {
+      match t with
+      | OptionOrValueOptionType innerType when unwrapOption ->
+        let! innerSchema = getOrCreateDeterministicSchema ctx ct innerType
+        let optionSchema = OpenApiSchema()
+        SchemaCopy.copyTo optionSchema innerSchema
+        addNull optionSchema innerSchema
+        return optionSchema
+      | _ -> return! getOrCreateDeterministicSchema ctx ct t
+    }
+
+  let canSkipField (options: System.Text.Json.JsonSerializerOptions) (fsOptions: JsonFSharpOptions) (t: Type) =
+    match t with
+    | OptionOrValueOptionType _ ->
+      fsOptions.SkippableOptionFields = SkippableOptionFields.Always
+      || (ignoreNullValues options
+          && fsOptions.SkippableOptionFields = SkippableOptionFields.FromJsonSerializerOptions)
+    | _ ->
+      ignoreNullValues options
+      || (t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Skippable<_>>)

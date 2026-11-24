@@ -174,22 +174,14 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
           let originalMetadata = schema.Metadata
           let cases = FSharpType.GetUnionCases t
 
-          let ignoreNullValues = OpenApiSchemaHelpers.ignoreNullValues ctx.JsonTypeInfo.Options
-
           let getOrCreateSchema (ty: Type) =
             OpenApiSchemaHelpers.getOrCreateDeterministicSchema ctx ct ty
 
           let getFieldPropertySchema (ty: Type) =
-            task {
-              match ty with
-              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when unwrapOptionFields ->
-                let! innerSchema = getOrCreateSchema innerType
-                let optionSchema = OpenApiSchema()
-                SchemaCopy.copyTo optionSchema innerSchema
-                OpenApiSchemaHelpers.addNull optionSchema innerSchema
-                return optionSchema
-              | _ -> return! getOrCreateSchema ty
-            }
+            OpenApiSchemaHelpers.getOrCreateFieldSchema unwrapOptionFields ctx ct ty
+
+          let canSkipField (ty: Type) =
+            OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options fsOptions ty
 
           let createUnionFieldsObjectSchema (uci: UnionCaseInfo) =
             task {
@@ -203,7 +195,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                 let! fieldSchema = getFieldPropertySchema fieldInfo.PropertyType
                 props[name] <- fieldSchema
 
-                if not ignoreNullValues && not (UnionHelpers.isSkippableType fieldInfo.PropertyType) then
+                if not (canSkipField fieldInfo.PropertyType) then
                   required.Add(name) |> ignore
 
               return
@@ -256,8 +248,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                   for p in recordProps do
                     let name = UnionHelpers.getPropertyName ctx.JsonTypeInfo.Options p
 
-                    let canBeSkipped =
-                      ignoreNullValues || UnionHelpers.isSkippableType p.PropertyType
+                    let canBeSkipped = canSkipField p.PropertyType
 
                     let effectiveType =
                       if UnionHelpers.isSkippableType p.PropertyType then
@@ -279,7 +270,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                     let! fieldSchema = getFieldPropertySchema fieldInfo.PropertyType
                     props[name] <- fieldSchema
 
-                    if not ignoreNullValues && not (UnionHelpers.isSkippableType fieldInfo.PropertyType) then
+                    if not (canSkipField fieldInfo.PropertyType) then
                       required.Add(name) |> ignore
 
                 return
@@ -330,7 +321,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
                         || (fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapRecordCases
                             && FSharpType.IsRecord fields[0].PropertyType))
                   then
-                    getOrCreateSchema fields[0].PropertyType
+                    getFieldPropertySchema fields[0].PropertyType
                   elif fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.NamedFields then
                     createUnionFieldsObjectSchema uci
                   else
@@ -350,7 +341,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
               else
                 let! payloadSchema =
                   if fields.Length = 1 && fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapSingleFieldCases then
-                    getOrCreateSchema fields[0].PropertyType
+                    getFieldPropertySchema fields[0].PropertyType
                   elif fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.NamedFields then
                     createUnionFieldsObjectSchema uci
                   elif fields.Length = 0 then
@@ -397,7 +388,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
 
                 let! fieldSchemas =
                   distinctFieldTypes
-                  |> Array.map getOrCreateSchema
+                  |> Array.map getFieldPropertySchema
                   |> Task.WhenAll
 
                 let tagSchema =

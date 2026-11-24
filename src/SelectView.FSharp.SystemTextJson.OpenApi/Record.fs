@@ -62,10 +62,7 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
           let originalId = schema.Id
           let originalMetadata = schema.Metadata
           let fsOptions = FsOptions.getEffectiveFsOptions t fsOptions
-          let ignoreNulls = OpenApiSchemaHelpers.ignoreNullValues ctx.JsonTypeInfo.Options
 
-          let getOrCreateSchema ty =
-            OpenApiSchemaHelpers.getOrCreateDeterministicSchema ctx ct ty
 
           let props = Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal)
           let required = HashSet<string>(StringComparer.Ordinal)
@@ -91,27 +88,15 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
                 |> not
 
               not explicitlyRequired
-              && (ignoreNulls || RecordHelpers.isSkippableType p.PropertyType)
+              && OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options fsOptions p.PropertyType
 
             let effectiveType =
               match p.PropertyType with
               | RecordHelpers.SkippableType inner -> inner
               | _ -> p.PropertyType
 
-            let propertySchemaTask =
-              match effectiveType with
-              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when unwrapOptionFields ->
-                  task {
-                    let! innerSchema = getOrCreateSchema innerType
-
-                    let optionSchema = OpenApiSchema()
-                    SchemaCopy.copyTo optionSchema innerSchema
-                    OpenApiSchemaHelpers.addNull optionSchema innerSchema
-                    return optionSchema
-                  }
-              | _ -> getOrCreateSchema effectiveType
-
-            let! propertySchema = propertySchemaTask
+            let! propertySchema =
+              OpenApiSchemaHelpers.getOrCreateFieldSchema unwrapOptionFields ctx ct effectiveType
 
             props[name] <- propertySchema
 

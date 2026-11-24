@@ -8,7 +8,10 @@ open System.Threading.Tasks
 open Microsoft.AspNetCore.OpenApi
 open Microsoft.OpenApi
 
-type TupleSchemaTransformer() =
+type TupleSchemaTransformer(fsOptions: System.Text.Json.Serialization.JsonFSharpOptions) =
+  let unwrapOption =
+    fsOptions.UnionEncoding.HasFlag System.Text.Json.Serialization.JsonUnionEncoding.UnwrapOption
+
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync(schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken) : Task =
       task {
@@ -20,7 +23,7 @@ type TupleSchemaTransformer() =
 
           let! elementSchemas =
             distinctElementTypes
-            |> Array.map (OpenApiSchemaHelpers.getOrCreateDeterministicSchema ctx ct)
+            |> Array.map (OpenApiSchemaHelpers.getOrCreateFieldSchema unwrapOption ctx ct)
             |> Task.WhenAll
 
           let elementSchemaRefs =

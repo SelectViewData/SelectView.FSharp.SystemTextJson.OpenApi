@@ -35,7 +35,7 @@ type DependencyExtension() =
           JsonNodeSchemaTransformer()
           CollectionsSchemaTransformer()
           RecordSchemaTransformer(fsOptions)
-          TupleSchemaTransformer()
+          TupleSchemaTransformer(fsOptions)
           UnionSchemaTransformer(fsOptions)
           EnumSchemaTransformer()
         ]

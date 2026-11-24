@@ -92,7 +92,7 @@ let ``Collections use array and dictionary schemas matching their JSON encoding`
         OptionSchemaTransformer(fsOptions)
         CollectionsSchemaTransformer()
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer()
+        TupleSchemaTransformer(fsOptions)
         UnionSchemaTransformer(fsOptions)
       ])
 

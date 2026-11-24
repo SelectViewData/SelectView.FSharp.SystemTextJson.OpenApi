@@ -227,3 +227,35 @@ let createBuiltInOpenApiApp
 
     return app
   }
+
+let shippedTransformersFor (fsOptions: JsonFSharpOptions) : IOpenApiSchemaTransformer list =
+  [ OptionSchemaTransformer(fsOptions)
+    JsonNodeSchemaTransformer()
+    CollectionsSchemaTransformer()
+    RecordSchemaTransformer(fsOptions)
+    TupleSchemaTransformer(fsOptions)
+    UnionSchemaTransformer(fsOptions)
+    EnumSchemaTransformer() ]
+
+let serializeWith (fsOptions: JsonFSharpOptions) (value: 'T) =
+  JsonSerializer.Serialize<'T>(value, fsOptions.ToJsonSerializerOptions())
+
+let rec allowsNull (node: JsonNode) =
+  match node with
+  | :? JsonObject as obj ->
+    obj
+    |> Seq.exists (fun kvp ->
+      match kvp.Key, kvp.Value with
+      | "type", (:? JsonValue as v) -> v.GetValue<string>() = "null"
+      | "type", (:? JsonArray as types) ->
+        types |> Seq.exists (fun v -> not (isNull v) && v.GetValue<string>() = "null")
+      | _, Null -> false
+      | _, NonNull value -> allowsNull value)
+  | :? JsonArray as values -> values |> Seq.exists (fun v -> not (isNull v) && allowsNull v)
+  | _ -> false
+
+let requiredNames (schema: JsonNode) =
+  match schema["required"] with
+  | :? JsonArray as names -> names |> Seq.map (fun n -> (nonNull n).GetValue<string>()) |> Set.ofSeq
+  | _ -> Set.empty
+
