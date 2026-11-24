@@ -154,6 +154,8 @@ module private UnionCasePromotionPlan =
     | NonNull metadata -> metadata.Remove(MetadataKey) |> ignore
 
 type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
+  let unwrapOptionFields = fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
+
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync(schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken) : Task =
       let t = ctx.JsonTypeInfo.Type
@@ -180,7 +182,7 @@ type UnionSchemaTransformer(fsOptions: JsonFSharpOptions) =
           let getFieldPropertySchema (ty: Type) =
             task {
               match ty with
-              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption ->
+              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when unwrapOptionFields ->
                 let! innerSchema = getOrCreateSchema innerType
                 let optionSchema = OpenApiSchema()
                 SchemaCopy.copyTo optionSchema innerSchema

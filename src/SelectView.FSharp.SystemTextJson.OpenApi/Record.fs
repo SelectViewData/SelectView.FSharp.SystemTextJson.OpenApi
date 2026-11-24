@@ -48,6 +48,8 @@ module private RecordHelpers =
 
 
 type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
+  let unwrapOptionFields = fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
+
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync
       (schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken)
@@ -98,9 +100,7 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
 
             let propertySchemaTask =
               match effectiveType with
-              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when
-                  fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
-                  ->
+              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when unwrapOptionFields ->
                   task {
                     let! innerSchema = getOrCreateSchema innerType
 
