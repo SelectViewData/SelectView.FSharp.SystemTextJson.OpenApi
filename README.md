@@ -8,7 +8,8 @@ schemas then do not match the JSON that FSharp.SystemTextJson writes. This
 package adds schema and document transformers that read your
 `JsonFSharpOptions` and describe the real JSON:
 
-- `option` and `voption`: nullable values
+- `option` and `voption`: the inner value, and `null` for `option` record
+  fields
 - records: required and optional properties, including `Skippable<'T>` fields
 - unions: tags, internal and external encodings, named fields, unwrapped cases,
   fieldless cases as strings, and one component for each case
@@ -43,9 +44,9 @@ app.MapOpenApi() |> ignore
 
 `AddOpenApiForSystemTextJson` does three things:
 
-1. It adds `fsOptions` to the JSON options of minimal APIs
-   (`Microsoft.AspNetCore.Http.Json.JsonOptions`). MVC controllers and Giraffe
-   use their own serializer options: add `fsOptions` there yourself.
+1. It adds `fsOptions` to `Microsoft.AspNetCore.Http.Json.JsonOptions`. The
+   OpenAPI generator and minimal APIs read these options. MVC controllers and
+   Giraffe use their own serializer options: give them the same settings.
 2. It registers the OpenAPI document (`v1` by default) with all transformers.
 3. It sets the OpenAPI version to 3.1.
 

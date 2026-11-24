@@ -32,46 +32,63 @@ app.MapOpenApi() |> ignore
 ```
 
 `AddOpenApiForSystemTextJson(fsOptions, ?documentName, ?setup)` registers the
-OpenAPI document (default `v1`, OpenAPI 3.1) with all transformers. It also
-adds `fsOptions` to `Microsoft.AspNetCore.Http.Json.JsonOptions`, which only
-minimal APIs read.
+OpenAPI document (default `v1`, served at `/openapi/{documentName}.json`,
+OpenAPI 3.1) with all transformers. It also adds `fsOptions` to
+`Microsoft.AspNetCore.Http.Json.JsonOptions`.
+
+The OpenAPI generator builds every schema from
+`Microsoft.AspNetCore.Http.Json.JsonOptions` (naming policy, ignore condition,
+`fsOptions`). Minimal APIs serialize with the same options. MVC controllers
+and Giraffe serialize with their own options.
 
 ## Rules
 
-1. Use one `JsonFSharpOptions` value for the serializer and for the OpenAPI
-   document. Two different values give a schema that does not match the JSON.
-2. MVC controllers and Giraffe use their own serializer options. Add the same
-   `fsOptions` there too, for example
-   `fsOptions.AddToJsonSerializerOptions(options.JsonSerializerOptions)` in
-   `AddControllers().AddJsonOptions(...)`, or Giraffe's
-   `SystemTextJson.Serializer` built from options that include `fsOptions`.
-3. To change one type, put `[<JsonFSharpConverter(...)>]` on that type and
+1. The serializer that writes the JSON and
+   `Microsoft.AspNetCore.Http.Json.JsonOptions` must have the same settings:
+   the same `fsOptions`, naming policy and ignore condition. If they differ,
+   the schema does not match the JSON.
+   - Minimal APIs: nothing more to do.
+   - MVC: in `AddControllers().AddJsonOptions(fun o -> ...)`, call
+     `fsOptions.AddToJsonSerializerOptions(o.JsonSerializerOptions)` and set
+     the same naming policy and ignore condition as in `JsonOptions`.
+   - Giraffe: register
+     `services.AddSingleton<Json.ISerializer>(Json.Serializer(jsonOptions))`,
+     where `jsonOptions` has the same settings and `fsOptions` added.
+2. To change one type, put `[<JsonFSharpConverter(...)>]` on that type and
    call `WithAllowOverride()` on the global options. The transformers read
    this attribute. Do not use `JsonFSharpOptions.WithOverrides`: the
    serializer applies it, but the transformers do not, so the schema stays
    wrong.
-4. The attribute does not inherit the global options. Set every option that
+3. The attribute does not inherit the global options. Set every option that
    the type needs (for example the union tag name) in the attribute.
-5. If you add the transformers yourself with `AddOpenApi`, also add the two
-   document transformers `UnionCaseComponentsDocumentTransformer()` and
-   `NullableEnumDocumentTransformer()`, and add `fsOptions` to the serializer.
+4. If you add the transformers yourself with `AddOpenApi`, add `fsOptions` to
+   `JsonOptions`, and add the two document transformers
+   `UnionCaseComponentsDocumentTransformer()` and
+   `NullableEnumDocumentTransformer()` last, after your own document
+   transformers.
+5. The transformers do not model `WithSkippableOptionFields` or `MapFormat`.
+   With these options the schema does not match the JSON.
 
 ## What the schema shows
 
-- `option` and `voption`: the inner schema plus `null`. With
-  `UnwrapOption` turned off, a tagged union with `Some` and `None`.
+- `option` record field: the inner schema plus `null`. Top-level `option` and
+  every `voption`: the inner schema only.
+- With `UnwrapOption` turned off: `option` is `null` or a tagged `Some`
+  object; `voption` is a tagged `ValueSome` or `ValueNone` object.
 - Records: a `Skippable<'T>` field is optional. With
   `JsonIgnoreCondition.WhenWritingNull`, every field is optional.
   `[<JsonRequired>]` makes a field required.
 - Unions: the encoding from the options (internal tag, adjacent tag, external
-  tag, untagged, named fields, unwrapped record cases, unwrapped single-case
-  unions). Fieldless cases become strings with `UnwrapFieldlessTags`. Each
-  case gets its own component.
+  tag, untagged, named fields, unwrapped record cases, unwrapped single-field
+  cases, unwrapped single-case unions). With `UnwrapFieldlessTags`, a union of
+  only fieldless cases becomes a string enum. Other unions with more than one
+  case get one component for each case.
 - A tuple becomes a fixed-length array. Its items schema allows any of the
   element types; it does not fix the type of each position.
 - `list` and `Set` become arrays. `Map` with `string` keys (or single-case
   unions that wrap a string) becomes an object; other `Map` keys become an
-  array of `[key, value]` pairs. `JsonNode` accepts any value.
+  array of `[key, value]` pairs. `JsonObject` becomes an object with any
+  properties.
 - Enums use their string or number values, also when they are nullable.
 
 ## Check
@@ -79,10 +96,6 @@ minimal APIs read.
 When you change options or a type, compare the runtime JSON with the schema:
 
 1. Serialize a sample value with the app's serializer options.
-2. Read `/openapi/v1.json` and resolve the `$ref` of that type.
+2. Read `/openapi/{documentName}.json` and resolve the `$ref` of that type.
 3. Every property and union tag in the JSON must be in the schema, and every
    required property in the schema must be in the JSON.
-
-Keep a committed snapshot of the OpenAPI document and fail the build when it
-changes without review. Generated clients (for example openapi-typescript)
-then change only on purpose.
