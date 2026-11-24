@@ -59,6 +59,16 @@ document transformers: `UnionCaseComponentsDocumentTransformer()` gives one
 component for each union case, and `NullableEnumDocumentTransformer()` fixes
 nullable enums.
 
+## Agent skill
+
+The repository has an [Agent Skills](https://agentskills.io) skill that teaches
+coding agents (Claude Code, Codex, GitHub Copilot, Cursor and others) how to
+use this package:
+
+```sh
+npx skills add SelectViewData/SelectView.FSharp.SystemTextJson.OpenApi
+```
+
 ## Build
 
 ```sh
