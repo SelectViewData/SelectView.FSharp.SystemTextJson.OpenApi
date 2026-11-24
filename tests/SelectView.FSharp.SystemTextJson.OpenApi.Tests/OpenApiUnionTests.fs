@@ -443,7 +443,7 @@ let ``Multi-case union schema is referenced (not inlined)`` () : Task =
             [ OptionSchemaTransformer(fsOptions)
               UnionSchemaTransformer(fsOptions)
               RecordSchemaTransformer(fsOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsOptions) ]
       )
 
     getSchemaForPath builtIn "/union-sample" |> assertSchemaIsRef
@@ -463,7 +463,7 @@ let ``Multi-case union branches are referenced (not inlined)`` () : Task =
             [ OptionSchemaTransformer(fsOptions)
               UnionSchemaTransformer(fsOptions)
               RecordSchemaTransformer(fsOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsOptions) ]
       )
 
     let unionSchema =
@@ -496,7 +496,7 @@ let ``Single-case fieldless union schema is inlined as case object`` () : Task =
             [ OptionSchemaTransformer(fsOptions)
               UnionSchemaTransformer(fsOptions)
               RecordSchemaTransformer(fsOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsOptions) ]
       )
 
     let schema = getResponseSchemaForPath builtIn "/union-single-case-fieldless" 200
@@ -531,7 +531,7 @@ let ``Single-case single-field union schema is unwrapped`` () : Task =
             [ OptionSchemaTransformer(fsOptions)
               UnionSchemaTransformer(fsOptions)
               RecordSchemaTransformer(fsOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsOptions) ]
       )
 
     let schema = getResponseSchemaForPath builtIn "/union-single-case-single-field" 200
@@ -755,7 +755,7 @@ let ``Generic non-Result unions with nested payloads get stable wrapper and case
             [ OptionSchemaTransformer(fsOptions)
               UnionSchemaTransformer(fsOptions)
               RecordSchemaTransformer(fsOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsOptions) ]
       )
 
     let wrapperRefResultArray = getResponseSchemaRef builtIn "/union-envelope-result-array"
@@ -855,7 +855,7 @@ let ``Optional payload-union property is a single nullable union component`` () 
             [ OptionSchemaTransformer(fsharpJsonOptions)
               UnionSchemaTransformer(fsharpJsonOptions)
               RecordSchemaTransformer(fsharpJsonOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsharpJsonOptions) ]
       )
 
     let unionId =
@@ -916,7 +916,7 @@ let ``Optional fieldless-tag union property lists null in its enum`` () : Task =
             [ OptionSchemaTransformer(fsharpJsonOptions)
               UnionSchemaTransformer(fsharpJsonOptions)
               RecordSchemaTransformer(fsharpJsonOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsharpJsonOptions) ]
       )
 
     let statusSchema =

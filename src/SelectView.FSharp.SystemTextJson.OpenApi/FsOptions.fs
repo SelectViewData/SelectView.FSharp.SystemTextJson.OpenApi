@@ -5,14 +5,29 @@ open System.Text.Json.Serialization
 
 module internal FsOptions =
 
-  let private customOptions (t: Type) =
-    match t.GetCustomAttributes(typedefof<JsonFSharpConverterAttribute>, false) with
-    | [| atr |] ->
-      match atr with
-      | :? IJsonFSharpConverterAttribute as converter -> Some converter.Options
+  let private tryGetTypeOrGeneric (t: Type) (overrides: Collections.Generic.IDictionary<Type, JsonFSharpOptions> | null) =
+    match overrides with
+    | Null -> None
+    | NonNull overrides ->
+      match overrides.TryGetValue t with
+      | true, options -> Some options
+      | _ when t.IsGenericType ->
+        match overrides.TryGetValue(t.GetGenericTypeDefinition()) with
+        | true, options -> Some options
+        | _ -> None
       | _ -> None
-    | _ -> None
 
   let getEffectiveFsOptions (t: Type) (fsOptions: JsonFSharpOptions) =
-    customOptions t |> Option.defaultValue fsOptions
+    let inheritUnionEncoding (options: JsonFSharpOptions) =
+      if options.UnionEncoding.HasFlag JsonUnionEncoding.Inherit then
+        options.WithUnionEncoding(fsOptions.UnionEncoding)
+      else
+        options
 
+    match tryGetTypeOrGeneric t (fsOptions.Overrides fsOptions) with
+    | Some options -> inheritUnionEncoding options
+    | None when fsOptions.AllowOverride ->
+      match t.GetCustomAttributes(typeof<IJsonFSharpConverterAttribute>, true) with
+      | [||] -> fsOptions
+      | attributes -> inheritUnionEncoding (attributes[0] :?> IJsonFSharpConverterAttribute).Options
+    | None -> fsOptions

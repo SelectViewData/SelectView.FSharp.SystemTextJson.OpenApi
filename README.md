@@ -8,16 +8,19 @@ schemas then do not match the JSON that FSharp.SystemTextJson writes. This
 package adds schema and document transformers that read your
 `JsonFSharpOptions` and describe the real JSON:
 
-- `option` and `voption`: the inner value, and `null` for record and union
-  fields
+- `option` and `voption`: the inner value, and `null` for record fields,
+  union fields and tuple elements
 - records: required and optional properties, including `Skippable<'T>` fields
+  and `SkippableOptionFields`
 - unions: tags, internal, adjacent and external encodings, named fields,
   unwrapped cases, fieldless cases as strings, unions of only fieldless cases
   as string enums, and one component for each case (except string-enum and
   unwrapped single-case unions)
 - tuples, F# collections (`list`, `Set`, `Map`), and `JsonObject`
 - enums: string and number encodings, also when nullable
-- per-type options from `[<JsonFSharpConverter(...)>]`
+- per-type options from `WithOverrides` and `[<JsonFSharpConverter(...)>]`,
+  merged with the global options the same way as FSharp.SystemTextJson
+  (`WithOverrideMembers` and `MapFormat` are not supported)
 
 The package targets .NET 10 and OpenAPI 3.1.
 

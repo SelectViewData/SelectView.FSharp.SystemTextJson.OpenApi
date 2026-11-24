@@ -227,3 +227,43 @@ let createBuiltInOpenApiApp
 
     return app
   }
+
+let shippedTransformersFor (fsOptions: JsonFSharpOptions) : IOpenApiSchemaTransformer list =
+  [ OptionSchemaTransformer(fsOptions)
+    JsonNodeSchemaTransformer()
+    CollectionsSchemaTransformer()
+    RecordSchemaTransformer(fsOptions)
+    TupleSchemaTransformer(fsOptions)
+    UnionSchemaTransformer(fsOptions)
+    EnumSchemaTransformer() ]
+
+let serializeWith (fsOptions: JsonFSharpOptions) (value: 'T) =
+  JsonSerializer.Serialize<'T>(value, fsOptions.ToJsonSerializerOptions())
+
+let itemAlternatives (arraySchema: JsonNode) =
+  match arraySchema["items"] with
+  | :? JsonObject as items ->
+    match items["anyOf"] with
+    | :? JsonArray as alternatives -> alternatives |> Seq.map nonNull |> List.ofSeq
+    | _ -> [ items ]
+  | _ -> failwith $"Expected items in {arraySchema.ToJsonString()}"
+
+let schemaTypes (schema: JsonNode) =
+  match schema["type"] with
+  | :? JsonValue as v -> Set.singleton (v.GetValue<string>())
+  | :? JsonArray as types -> types |> Seq.map (fun v -> (nonNull v).GetValue<string>()) |> Set.ofSeq
+  | _ -> Set.empty
+
+let rec arraySchemasUnder (node: JsonNode) : JsonNode list =
+  match node with
+  | :? JsonObject as obj ->
+    let self = if schemaTypes node = Set.singleton "array" && not (isNull obj["items"]) then [ node ] else []
+    self @ (obj |> Seq.toList |> List.collect (fun kvp -> match kvp.Value with | Null -> [] | NonNull v -> arraySchemasUnder v))
+  | :? JsonArray as values -> values |> Seq.toList |> List.collect (fun v -> match v with | Null -> [] | NonNull v -> arraySchemasUnder v)
+  | _ -> []
+
+let requiredNames (schema: JsonNode) =
+  match schema["required"] with
+  | :? JsonArray as names -> names |> Seq.map (fun n -> (nonNull n).GetValue<string>()) |> Set.ofSeq
+  | _ -> Set.empty
+

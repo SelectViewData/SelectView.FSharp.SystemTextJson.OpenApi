@@ -95,7 +95,7 @@ let ``Record schema exposes fields, JSON names, and required properties`` () : T
         OptionSchemaTransformer(fsOptions)
         UnionSchemaTransformer(fsOptions)
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer()
+        TupleSchemaTransformer(fsOptions)
       ])
 
   let schema = getSchemaForPath builtIn "/record-sample" |> expandSchemaRefs builtIn
@@ -125,7 +125,7 @@ let ``Record schema is referenced (not inlined)`` () : Task = task {
         OptionSchemaTransformer(fsOptions)
         UnionSchemaTransformer(fsOptions)
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer()
+        TupleSchemaTransformer(fsOptions)
       ])
 
   getSchemaForPath builtIn "/record-sample" |> assertSchemaIsRef
@@ -143,7 +143,7 @@ let ``JsonObject record field allows arbitrary object properties`` () : Task = t
         JsonNodeSchemaTransformer()
         CollectionsSchemaTransformer()
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer()
+        TupleSchemaTransformer(fsOptions)
       ])
 
   let schema =

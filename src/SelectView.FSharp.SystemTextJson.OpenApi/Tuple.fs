@@ -2,13 +2,14 @@ namespace SelectView.FSharp.SystemTextJson.OpenApi
 
 open System
 open System.Collections.Generic
+open System.Text.Json.Serialization
 open Microsoft.FSharp.Reflection
 open System.Threading
 open System.Threading.Tasks
 open Microsoft.AspNetCore.OpenApi
 open Microsoft.OpenApi
 
-type TupleSchemaTransformer() =
+type TupleSchemaTransformer(fsOptions: JsonFSharpOptions) =
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync(schema: OpenApiSchema, ctx: OpenApiSchemaTransformerContext, ct: CancellationToken) : Task =
       task {
@@ -20,28 +21,14 @@ type TupleSchemaTransformer() =
 
           let! elementSchemas =
             distinctElementTypes
-            |> Array.map (OpenApiSchemaHelpers.getOrCreateDeterministicSchema ctx ct)
+            |> Array.map (OpenApiSchemaHelpers.getOrCreateFieldSchema fsOptions ctx ct)
             |> Task.WhenAll
 
           let elementSchemaRefs =
             elementSchemas
             |> Array.map (fun schema -> schema :> IOpenApiSchema)
 
-          let hasPlainString =
-            elementSchemaRefs
-            |> Seq.map OpenApiSchemaHelpers.unwrapReferenceSchema
-            |> Seq.exists (fun s -> s.Type = Nullable(JsonSchemaType.String) && OpenApiSchemaHelpers.enumIsEmpty s)
-
-          let hasEnumString =
-            elementSchemaRefs
-            |> Seq.map OpenApiSchemaHelpers.unwrapReferenceSchema
-            |> Seq.exists (fun s -> s.Type = Nullable(JsonSchemaType.String) && not (OpenApiSchemaHelpers.enumIsEmpty s))
-
-          let itemUnionSchema =
-            if hasPlainString && hasEnumString then
-              OpenApiSchema(AnyOf = ResizeArray<IOpenApiSchema>(elementSchemaRefs))
-            else
-              OpenApiSchema(OneOf = ResizeArray<IOpenApiSchema>(elementSchemaRefs))
+          let itemUnionSchema = OpenApiSchemaHelpers.anyOfSchema elementSchemaRefs
 
           let tupleSchema =
             OpenApiSchema(

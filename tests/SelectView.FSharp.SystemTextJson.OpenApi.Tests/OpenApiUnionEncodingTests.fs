@@ -39,7 +39,7 @@ let private createTransformers fsOptions =
   [ OptionSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
     CollectionsSchemaTransformer() :> IOpenApiSchemaTransformer
     RecordSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
-    TupleSchemaTransformer() :> IOpenApiSchemaTransformer
+    TupleSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer
     UnionSchemaTransformer(fsOptions) :> IOpenApiSchemaTransformer ]
 
 let rec private collectPropertyNames (node: JsonNode) = seq {

@@ -52,7 +52,7 @@ let ``Tuple schema is a fixed-length array of its element types`` () : Task = ta
         OptionSchemaTransformer(fsOptions)
         UnionSchemaTransformer(fsOptions)
         RecordSchemaTransformer(fsOptions)
-        TupleSchemaTransformer()
+        TupleSchemaTransformer(fsOptions)
       ])
 
   let schema = getSchemaForPath builtIn "/tuple-sample" |> expandSchemaRefs builtIn
@@ -61,7 +61,7 @@ let ``Tuple schema is a fixed-length array of its element types`` () : Task = ta
   %((schema["minItems"] :?> JsonValue).GetValue<int>()).Should().Be(2)
   %((schema["maxItems"] :?> JsonValue).GetValue<int>()).Should().Be(2)
 
-  let itemAlternatives = schema["items"]["oneOf"] :?> JsonArray
+  let itemAlternatives = schema["items"]["anyOf"] :?> JsonArray
 
   let itemTypes = itemAlternatives |> Seq.collect getSchemaTypes |> Set.ofSeq
 
@@ -81,7 +81,7 @@ let ``Tuple schema is inlined`` () : Task =
             [ OptionSchemaTransformer(fsOptions)
               UnionSchemaTransformer(fsOptions)
               RecordSchemaTransformer(fsOptions)
-              TupleSchemaTransformer() ]
+              TupleSchemaTransformer(fsOptions) ]
       )
 
     getSchemaForPath builtIn "/tuple-sample" |> assertSchemaIsInline

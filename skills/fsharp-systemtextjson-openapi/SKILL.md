@@ -50,31 +50,38 @@ reads.
    - Giraffe: register
      `services.AddSingleton<Json.ISerializer>(Json.Serializer(jsonOptions))`,
      where `jsonOptions` has the same settings and `fsOptions` added.
-2. To change one type, put `[<JsonFSharpConverter(...)>]` on that type and
-   call `WithAllowOverride()` on the global options. The transformers read
-   this attribute. Do not use `JsonFSharpOptions.WithOverrides`: the
-   serializer applies it, but the transformers do not, so the schema stays
-   wrong.
-3. The attribute does not inherit the global options. Set every option that
-   the type needs (for example the union tag name) in the attribute.
+2. To change one type, use `JsonFSharpOptions.WithOverrides`, or put
+   `[<JsonFSharpConverter(...)>]` on the type and call `WithAllowOverride()`
+   on the global options (without it, the attribute is ignored). The
+   transformers apply both the same way as FSharp.SystemTextJson.
+3. Per-type options inherit only the union encoding, and only when they do not
+   set it. Every other option (for example the union tag name) takes the
+   FSharp.SystemTextJson default, not the global value. Set every option that
+   the type needs. An `option` or `voption` field takes `UnwrapOption` from
+   the options for `option<_>` or `voption<_>` (global or overridden).
+   Whether a `None` field is left out follows the `SkippableOptionFields` of
+   the record or union that contains it.
 4. If you add the transformers yourself with `AddOpenApi`, add `fsOptions` to
    `JsonOptions`, and add the two document transformers
    `UnionCaseComponentsDocumentTransformer()` and
    `NullableEnumDocumentTransformer()` last, after your own document
    transformers.
-5. The transformers do not model `WithSkippableOptionFields` or `MapFormat`.
-   With these options the schema does not match the JSON.
+5. The transformers do not model `MapFormat` or `WithOverrideMembers`. With
+   these options the schema does not match the JSON.
 
 ## What the schema shows
 
-- `option` or `voption` record or union field: the inner schema plus `null`,
-  because `None` and `ValueNone` are written as `null`. Top-level `option` and
-  `voption`: the inner schema only.
+- `option` or `voption` in a record field, a union field or a tuple element:
+  the inner schema plus `null`, because `None` and `ValueNone` are written as
+  `null`. Top-level `option` and `voption`: the inner schema only.
 - With `UnwrapOption` turned off: `option` is `null` or a tagged `Some`
   object; `voption` is a tagged `ValueSome` or `ValueNone` object.
-- Records: a `Skippable<'T>` field is optional. With
-  `JsonIgnoreCondition.WhenWritingNull`, every field is optional.
-  `[<JsonRequired>]` makes a field required.
+- Record and named union fields: a `Skippable<'T>` field is optional. An
+  `option` or `voption` field is optional with
+  `SkippableOptionFields.Always`, or with `FromJsonSerializerOptions` (the
+  default) and `JsonIgnoreCondition.WhenWritingNull`. With `WhenWritingNull`,
+  other fields are optional too. `[<JsonRequired>]` makes a record field
+  required.
 - Unions: the encoding from the options (internal tag, adjacent tag, external
   tag, untagged, named fields, unwrapped record cases, unwrapped single-field
   cases, unwrapped single-case unions). With `UnwrapFieldlessTags`, a

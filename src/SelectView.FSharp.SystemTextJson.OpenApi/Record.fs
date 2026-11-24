@@ -12,15 +12,6 @@ open Microsoft.OpenApi
 
 module private RecordHelpers =
 
-  let isSkippableType (t: Type) =
-    t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Skippable<_>>
-
-  let (|SkippableType|_|) (t: Type) =
-    if isSkippableType t then
-      Some(t.GetGenericArguments()[0])
-    else
-      None
-
   let getRecordProperties (fsOptions: JsonFSharpOptions) (recordType: Type) =
     let fields = FSharpType.GetRecordFields(recordType, true)
 
@@ -47,8 +38,7 @@ module private RecordHelpers =
         || (p.GetCustomAttributes(typeof<JsonIncludeAttribute>, true) |> Seq.isEmpty |> not))
 
 
-type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
-  let unwrapOptionFields = fsOptions.UnionEncoding.HasFlag JsonUnionEncoding.UnwrapOption
+type RecordSchemaTransformer(globalFsOptions: JsonFSharpOptions) =
 
   interface IOpenApiSchemaTransformer with
     member _.TransformAsync
@@ -61,11 +51,7 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
           // Preserve schema identity so records stay component schemas (not inlined everywhere).
           let originalId = schema.Id
           let originalMetadata = schema.Metadata
-          let fsOptions = FsOptions.getEffectiveFsOptions t fsOptions
-          let ignoreNulls = OpenApiSchemaHelpers.ignoreNullValues ctx.JsonTypeInfo.Options
-
-          let getOrCreateSchema ty =
-            OpenApiSchemaHelpers.getOrCreateDeterministicSchema ctx ct ty
+          let fsOptions = FsOptions.getEffectiveFsOptions t globalFsOptions
 
           let props = Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal)
           let required = HashSet<string>(StringComparer.Ordinal)
@@ -91,27 +77,12 @@ type RecordSchemaTransformer(fsOptions: JsonFSharpOptions) =
                 |> not
 
               not explicitlyRequired
-              && (ignoreNulls || RecordHelpers.isSkippableType p.PropertyType)
+              && OpenApiSchemaHelpers.canSkipField ctx.JsonTypeInfo.Options fsOptions p.PropertyType
 
-            let effectiveType =
-              match p.PropertyType with
-              | RecordHelpers.SkippableType inner -> inner
-              | _ -> p.PropertyType
+            let effectiveType = OpenApiSchemaHelpers.skippableInner p.PropertyType
 
-            let propertySchemaTask =
-              match effectiveType with
-              | OpenApiSchemaHelpers.OptionOrValueOptionType innerType when unwrapOptionFields ->
-                  task {
-                    let! innerSchema = getOrCreateSchema innerType
-
-                    let optionSchema = OpenApiSchema()
-                    SchemaCopy.copyTo optionSchema innerSchema
-                    OpenApiSchemaHelpers.addNull optionSchema innerSchema
-                    return optionSchema
-                  }
-              | _ -> getOrCreateSchema effectiveType
-
-            let! propertySchema = propertySchemaTask
+            let! propertySchema =
+              OpenApiSchemaHelpers.getOrCreateFieldSchema globalFsOptions ctx ct effectiveType
 
             props[name] <- propertySchema
 
